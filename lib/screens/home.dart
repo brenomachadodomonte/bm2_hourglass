@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class Home extends StatefulWidget {
@@ -9,10 +10,11 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
 
   AnimationController controller;
   double val = 0.0;
+  bool isPlaying = false;
 
   String get timerString {
     Duration duration = controller.duration * (controller.value == 0.0 ? 1 : controller.value);
-    return '${duration.inMinutes}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}';
+    return '${duration.inMinutes.toString().padLeft(2, '0')}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}';
   }
 
   @override
@@ -22,12 +24,21 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
       vsync: this,
       duration: Duration(seconds: 5),
     );
+
+    controller.addStatusListener((status){
+      if(status == AnimationStatus.dismissed){
+        setState(() {
+          isPlaying = false;
+        });
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
 
     double width = MediaQuery.of(context).size.width - 20;
+    double size = (width * 0.3125);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -37,35 +48,11 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
             animation: controller,
             builder: (context, child){
               return Container(
-                padding: EdgeInsets.only(top: 200),
+                padding: EdgeInsets.only(top: 80),
                 child: Column(
                   children: <Widget>[
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: <Widget>[
-                        RaisedButton(
-                          child: Text('reset'),
-                          onPressed: (){
-                            setState(() {
-                              val = 0;
-                            });
-                          },
-                        ),
-                        RaisedButton(
-                          child: Text('increment'),
-                          onPressed: (){
-                            if(controller.isAnimating) {
-                              controller.stop();
-                            } else {
-                              controller.reverse(from: controller.value == 0.0 ? 1.0 : controller.value);
-                            }
-                            setState(() {
-                              val += 1;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
+                    Text('BM2', style: TextStyle(color: Colors.grey)),
+                    Text(timerString, style: TextStyle(fontSize: 100, color: Colors.grey)),
                     SizedBox(height: 20,),
                     Container(
                       width: width,
@@ -74,17 +61,17 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                         children: <Widget>[
                           Column(
                             children: <Widget>[
-                              SizedBox(height: (width * 0.125) + val,),
+                              SizedBox(height: (width * 0.125) + ((1.0 - controller.value) * size),),
                               Container(
                                 color: Colors.amber,
                                 width: width - 10,
-                                height: (width * 0.3125) - val,
+                                height: size - ((1.0 - controller.value) * size),
                               ),
-                              SizedBox(height: (width * 0.4375) - val,),
+                              SizedBox(height: (width * 0.4375) - ((1.0 - controller.value) * size),),
                               Container(
                                 color: Colors.amber,
                                 width: width - 10,
-                                height: (width * 0) + val,
+                                height: (1.0 - controller.value) * size,
 //                            height: width * 0.3125,
                               ),
                               SizedBox(height: width * 0.125,),
@@ -97,12 +84,97 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                       ),
                     ),
                     SizedBox(height: 20,),
-                    Text(timerString, style: TextStyle(fontSize: 100, color: Colors.grey),)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: <Widget>[
+                        FloatingActionButton.extended(
+                          label: Text('Reset', style: TextStyle(color: Colors.white),),
+                          icon: Icon(Icons.close, color: Colors.white),
+                          onPressed: (){
+                            controller.reset();
+                            setState(() {
+                              isPlaying = false;
+                            });
+                          },
+                        ),
+                        FloatingActionButton(
+                          child: Icon(Icons.settings, color: Colors.white),
+                          onPressed: (){
+                            _showDialogSetup(context);
+                          },
+                        ),
+                        FloatingActionButton.extended(
+                          label: Text(isPlaying ? 'Pause' : 'Play', style: TextStyle(color: Colors.white),),
+                          icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white),
+                          onPressed: (){
+                            if(controller.isAnimating) {
+                              controller.stop();
+                            } else {
+                              controller.reverse(from: controller.value == 0.0 ? 1.0 : controller.value);
+                            }
+                            setState(() {
+                              isPlaying = !isPlaying;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               );
             }),
       ),
+    );
+  }
+
+  void _showDialogSetup(BuildContext context){
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Center(
+            child: Text('Setup'),
+          ),
+          content: Container(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  CupertinoTimerPicker(
+                    mode: CupertinoTimerPickerMode.ms,
+                    minuteInterval: 1,
+                    secondInterval: 1,
+                    initialTimerDuration: controller.duration,
+                    onTimerDurationChanged: (Duration changedtimer) {
+                      setState(() {
+                        if(controller != null){
+                          controller.duration = changedtimer;
+                        }
+                      });
+                    },
+                  ),
+                  SizedBox(height: 10.0,),
+                  Divider(),
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        flex: 1,
+                        child: FlatButton(
+                          child: Text(
+                            "CLOSE",
+                            style: TextStyle(color: Theme.of(context).primaryColor),
+                          ),
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              )
+          ),
+        );
+      },
     );
   }
 }

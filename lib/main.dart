@@ -4,7 +4,7 @@ import 'package:hourglass/screens/home.dart';
 void main() => runApp(MaterialApp(
   home: Home(),
   theme: ThemeData(
-    primarySwatch: Colors.green,
+    primarySwatch: Colors.grey,
   ),
   debugShowCheckedModeBanner: false,
 ));
